@@ -1,0 +1,10 @@
+# CUDA 版 torch 需从 PyTorch 官方源安装:
+#   pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+nuscenes-devkit==1.2.0
+numpy==1.26.4
+pyquaternion==0.9.9
+matplotlib==3.10.9
+hypothesis==6.168.5
+tqdm==4.67.3
