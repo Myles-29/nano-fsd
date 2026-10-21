@@ -15,6 +15,9 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from bev_encoder import build_sampling_grid
 
 SCENE_SCALE = 50.0
+MAX_GT = 50                       # 结构化 agent 定长上限，和模型 N query 对齐
+MAP_MAX = 48                      # 矢量折线定长上限，与模型 M map query 对齐
+MAP_POINTS = 20                   # 每条折线固定点数 P（弧长等距重采样）
 BEV_RANGE, BEV_SIZE = 50.0, 100
 # 高度锚点：覆盖地面(0)到卡车顶(~3m)，让 BEV 采样能命中车身主体（车窗/车顶），
 # 改善占据预测（之前最高只有 0.5m，采不到车身，占据差）。
@@ -60,6 +63,40 @@ class NuScenesBEVDataset(Dataset):
             out["drivable"] = torch.from_numpy(rec["drivable"]).float()  # (S,S) 可行驶区 0/1
         if "command" in rec:
             out["command"] = torch.tensor(rec["command"], dtype=torch.long)  # 0/1/2
+
+        # 结构化 agent 真值（检测/运动头监督）。向后兼容：旧缓存缺这些字段时填零 +
+        # mask 全 False，坐标沿用 SCENE_SCALE 归一化（与 traj 一致）。
+        Tf = self.fut_steps
+        if "agent_box" in rec:
+            agent_box = torch.from_numpy(rec["agent_box"]).float()   # (MAX_GT,5) [x,y,yaw,w,l]
+            # 仅 x,y 两列归一化；yaw/w/l 保持原值（朝向弧度、尺寸米不缩放）
+            agent_box[:, 0:2] = agent_box[:, 0:2] / SCENE_SCALE
+            out["agent_box"] = agent_box
+            out["agent_cls"] = torch.from_numpy(rec["agent_cls"]).long()        # (MAX_GT,)
+            out["agent_mask"] = torch.from_numpy(rec["agent_mask"]).bool()      # (MAX_GT,)
+            out["agent_fut"] = torch.from_numpy(rec["agent_fut"]).float() / SCENE_SCALE  # (MAX_GT,Tf,2)
+            out["agent_fut_mask"] = torch.from_numpy(rec["agent_fut_mask"]).bool()       # (MAX_GT,Tf)
+        else:
+            # 旧缓存：填零 + mask 全 False（检测/运动 loss 会据 mask 自动跳过）
+            out["agent_box"] = torch.zeros(MAX_GT, 5, dtype=torch.float32)
+            out["agent_cls"] = torch.zeros(MAX_GT, dtype=torch.long)
+            out["agent_mask"] = torch.zeros(MAX_GT, dtype=torch.bool)
+            out["agent_fut"] = torch.zeros(MAX_GT, Tf, 2, dtype=torch.float32)
+            out["agent_fut_mask"] = torch.zeros(MAX_GT, Tf, dtype=torch.bool)
+
+        # 矢量地图 GT（VectorMapHead 监督）。map_pts 的 xy 与 traj/agent 一致地
+        # /SCENE_SCALE 归一化；GT mask 键命名 map_poly_mask，与栅格 drivable 字段
+        # 互不影响。向后兼容：旧缓存缺 map_* 字段时填零 + map_poly_mask 全 False
+        # （矢量地图 loss 会据 mask 自动跳过）。
+        if "map_pts" in rec:
+            map_pts = torch.from_numpy(rec["map_pts"]).float()            # (MAP_MAX,P,2) 米
+            out["map_pts"] = map_pts / SCENE_SCALE                        # xy 归一化（与 traj 一致）
+            out["map_cls"] = torch.from_numpy(rec["map_cls"]).long()      # (MAP_MAX,)
+            out["map_poly_mask"] = torch.from_numpy(rec["map_mask"]).bool()  # (MAP_MAX,)
+        else:
+            out["map_pts"] = torch.zeros(MAP_MAX, MAP_POINTS, 2, dtype=torch.float32)
+            out["map_cls"] = torch.zeros(MAP_MAX, dtype=torch.long)
+            out["map_poly_mask"] = torch.zeros(MAP_MAX, dtype=torch.bool)
         return out
 
 

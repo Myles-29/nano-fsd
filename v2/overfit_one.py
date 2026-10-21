@@ -99,7 +99,7 @@ def main():
     print(f"[overfit] 开始单样本过拟合 {args.steps} 步...")
     losses = []
     for step in range(args.steps):
-        traj_pred = model(images, sample_uv, sample_valid)     # (1,Tf,2)
+        traj_pred = model(images, sample_uv, sample_valid)["traj"]  # (1,Tf,2)
         loss = ((traj_pred - traj_gt) ** 2).mean()
         opt.zero_grad(); loss.backward(); opt.step()
         losses.append(loss.item())
@@ -113,7 +113,8 @@ def main():
     # --- 画图：轨迹对比 + 训练后 BEV 能量 ---
     model.eval()
     with torch.no_grad():
-        traj_pred, bev = model(images, sample_uv, sample_valid, return_bev=True)
+        _out = model(images, sample_uv, sample_valid, return_bev=True)
+        traj_pred, bev = _out["traj"], _out["bev"]
     pred = (traj_pred[0].cpu().numpy()) * SCENE_SCALE
     gt = traj_m
     energy = bev[0].pow(2).sum(0).sqrt().cpu().numpy()

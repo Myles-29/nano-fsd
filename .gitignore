@@ -1,0 +1,64 @@
+# ========== 数据集（巨大，绝不入库）==========
+# nuScenes 原始数据 ~700G，本地保留、不同步
+data/
+*.zip
+
+# ========== 模型权重 / checkpoint ==========
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+checkpoints/
+runs/
+outputs/
+
+# ========== 训练产物 / 缓存 ==========
+cache/
+*.cache
+*.npy
+*.npz
+
+# ========== 日志 ==========
+*.log
+nohup.out
+nohup_*.log
+
+# ========== 可视化图片（训练产物，可复现）==========
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+
+# ========== Python ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.ipynb_checkpoints/
+
+# ========== 测试 / 类型检查缓存 ==========
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ========== 虚拟环境 ==========
+.venv/
+venv/
+env/
+
+# ========== 编辑器 / 系统 ==========
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*~

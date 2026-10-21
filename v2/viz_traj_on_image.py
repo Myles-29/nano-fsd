@@ -101,12 +101,12 @@ def main():
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=1e-3)
     print(f"[traj] 单样本过拟合 {args.steps} 步...")
     for step in range(args.steps):
-        pred = model(images, sample_uv, sample_valid)
+        pred = model(images, sample_uv, sample_valid)["traj"]
         loss = ((pred - traj_gt) ** 2).mean()
         opt.zero_grad(); loss.backward(); opt.step()
     model.eval()
     with torch.no_grad():
-        pred = model(images, sample_uv, sample_valid)[0].cpu().numpy() * SCENE_SCALE
+        pred = model(images, sample_uv, sample_valid)["traj"][0].cpu().numpy() * SCENE_SCALE
     print(f"[traj] 过拟合后预测末点(米)={pred[-1].round(2).tolist()}")
 
     pred3d = traj_to_3d(pred, z=0.0)
